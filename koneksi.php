@@ -1,4 +1,5 @@
 <?php
+// Deklarasi  variabel untuk tersambung ke database
 $host = "localhost";
 $user = "root";
 $pass = "";

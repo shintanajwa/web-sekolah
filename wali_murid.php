@@ -1,74 +1,78 @@
 <?php
-// Fungsi untuk menambah data wali murid
-if (isset($_POST['submit'])) {
-    $nama_siswa = $_POST['nama_siswa'];
-    $kelas_siswa = $_POST['kelas_siswa'];
-    $nama_wali = $_POST['nama_wali'];
-    $no_telepon_wali = $_POST['no_telepon_wali'];
+include 'koneksi.php';
 
-    // Menambahkan data wali murid ke file CSV
-    $file = fopen('data_wali_murid.csv', 'a');
-    fputcsv($file, array($nama_siswa, $kelas_siswa, $nama_wali, $no_telepon_wali));
-    fclose($file);
-    echo "<p>Data wali murid berhasil ditambahkan!</p>";
-}
+// Pencarian
+$search = isset($_GET['search']) ? mysqli_real_escape_string($koneksi, $_GET['search']) : '';
+$search_query = ($search != '') ? "WHERE nama_wali LIKE '%$search%'" : '';
 
-// Fungsi untuk menampilkan data wali murid
-function tampilkan_data_wali_murid() {
-    if (file_exists('data_wali_murid.csv')) {
-        $file = fopen('data_wali_murid.csv', 'r');
-        echo "<h2>Data Wali Murid dan Siswa</h2>";
-        echo "<table border='1'>
-                <tr> 
-                    <th>Nama Siswa</th>
-                    <th>Kelas</th>
-                    <th>Nama Wali Murid</th>
-                    <th>No Telepon Wali Murid</th>
-                </tr>";
-        
-        while (($data = fgetcsv($file)) !== FALSE) {
-            echo "<tr>
-                    <td>" . $data[0] . "</td>
-                    <td>" . $data[1] . "</td>
-                    <td>" . $data[2] . "</td>
-                    <td>" . $data[3] . "</td>
-                  </tr>";
-        }
-        fclose($file);
-        echo "</table>";
-    } else {
-        echo "<p>Belum ada data wali murid yang tersedia.</p>";
-    }
-}
+// Pagination
+$limit = 5; // Jumlah data per halaman
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
+
+// Hitung total data
+$total_query = "SELECT COUNT(*) AS total FROM wali_murid $search_query";
+$total_result = mysqli_query($koneksi, $total_query);
+$total_row = mysqli_fetch_assoc($total_result);
+$total_pages = ceil($total_row['total'] / $limit);
+
+// Ambil data wali murid dengan pagination
+$query = "SELECT * FROM wali_murid $search_query LIMIT $limit OFFSET $offset";
+$result = mysqli_query($koneksi, $query);
 ?>
-
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id"> 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Wali Murid</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <h1>Tambah Data Wali Murid</h1>
-    <form method="POST">
-        <label for="nama_siswa">Nama Siswa:</label><br>
-        <input type="text" id="nama_siswa" name="nama_siswa" required><br><br>
-
-        <label for="kelas_siswa">Kelas:</label><br>
-        <input type="text" id="kelas_siswa" name="kelas_siswa" required><br><br>
-
-        <label for="nama_wali">Nama Wali Murid:</label><br>
-        <input type="text" id="nama_wali" name="nama_wali" required><br><br>
-
-        <label for="no_telepon_wali">No Telepon Wali Murid:</label><br>
-        <input type="text" id="no_telepon_wali" name="no_telepon_wali" required><br><br>
-
-        <button type="submit" name="submit">Tambah Data</button>
-    </form>
-
-    <hr>
-
-    <?php tampilkan_data_wali_murid(); ?>
+    <div class="container mt-4">
+        <h2 class="mb-3">Data Wali Murid</h2>
+        <div class="d-flex justify-content-between mb-3">
+            <a href="index.php" class="btn btn-primary">Kembali ke Data Siswa</a>
+            <form method="GET" class="d-flex">
+                <input type="text" name="search" class="form-control me-2" placeholder="Cari wali murid..." value="<?php echo htmlspecialchars($search); ?>">
+                <button type="submit" class="btn btn-success">Cari</button>
+            </form>
+            <a href="tambah_wali_murid.php" class="btn btn-success">Tambah Wali Murid</a>
+        </div>
+        <table class="table table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID Wali</th>
+                    <th>Nama Wali</th>
+                    <th>Kontak</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php while ($row = mysqli_fetch_assoc($result)): ?>
+                    <tr>
+                        <td><?php echo $row['id_wali']; ?></td>
+                        <td><?php echo $row['nama_wali']; ?></td>
+                        <td><?php echo $row['kontak']; ?></td>
+                        <td>
+                            <a href="edit_wali.php?id=<?php echo $row['id_wali']; ?>" class="btn btn-warning btn-sm">Edit</a>
+                            <a href="hapus_wali.php?id=<?php echo $row['id_wali']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus?');">Hapus</a>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+        <!-- Pagination -->
+        <nav>
+            <ul class="pagination">
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <li class="page-item <?php if ($page == $i) echo 'active'; ?>">
+                        <a class="page-link" href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>"><?php echo $i; ?></a>
+                    </li>
+                <?php endfor; ?>
+            </ul>
+        </nav>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
